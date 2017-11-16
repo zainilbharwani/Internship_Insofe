@@ -80,22 +80,20 @@ library(ggplot2)
 hist(num_data$viscosity)
 ggplot()+geom_density(aes(num_data$viscosity))
 
-# Example
-# d <- c(0.24592963, 0.08555043, 0.02128725)
-# plot(density(d), xlab="DNA Segment Length", xlim=c(0,2))
-
+###Histogram
 # for(i in 1:20){
 #   dev.copy(jpeg,filename=paste(names(num_data[i]),"plot.jpg",sep="_"))
 #   hist(num_data[,i],xlab = names(num_data[i]), ylab = 'Frequency')
 #   dev.off ()
 # }
 
-boxplot(num_data[,4])
+boxplot(num_data[,4], xlab = 'num')
 boxplot.stats(num_data[,4])
 
+###Box-Plots
 # for(i in 1:20){
 #   dev.copy(jpeg,filename=paste(names(num_data[i]),"bwplot.jpg",sep="_"))
-#   boxplot(num_data[,i])
+#   boxplot(num_data[,i], xlab = names(num_data[i]))
 #   dev.off()
 # }
 
