@@ -51,8 +51,69 @@ summary(mydata)
 #Proportions of class levels
 227/312
 
+#Plots of categoric attributes
+sink("myfile.txt")
+sink()
+
+names(catdata)
+
+#To check the number of levels
+str(catdata)
+summary(catdata)
+
+plot(catdata$band.type)
+
+# pdf('mygraph1.pdf')
+# lapply(catdata[,names(catdata)],function(x) plot(x,xlab = names(catdata)))
+# dev.off()
+# plot(catdata[,2])
+
+
+# for(i in 1:20){
+#   dev.copy(jpeg,filename=paste(names(catdata[i]),"plot.jpg",sep="_"))
+#   plot(catdata[,i], xlab = names(catdata[i]), ylab = 'Frequency')
+#   dev.off ()
+# }
+
+#Plots of numeric variables
+library(ggplot2)
+hist(num_data$viscosity)
+ggplot()+geom_density(aes(num_data$viscosity))
+
+# Example
+# d <- c(0.24592963, 0.08555043, 0.02128725)
+# plot(density(d), xlab="DNA Segment Length", xlim=c(0,2))
+
+# for(i in 1:20){
+#   dev.copy(jpeg,filename=paste(names(num_data[i]),"plot.jpg",sep="_"))
+#   hist(num_data[,i],xlab = names(num_data[i]), ylab = 'Frequency')
+#   dev.off ()
+# }
+
+boxplot(num_data[,4])
+boxplot.stats(num_data[,4])
+
+# for(i in 1:20){
+#   dev.copy(jpeg,filename=paste(names(num_data[i]),"bwplot.jpg",sep="_"))
+#   boxplot(num_data[,i])
+#   dev.off()
+# }
+
 #Descriptive Stats of numeric attributes
 summary(num_data)
-apply(num_data,2,function(x) sd(x))
+apply(num_data,2,function(x) sd(x,na.rm = TRUE))
 
-#Plots of catego
+rows_with_more_NAs<-x[x>0.2]
+which(x>0.2)
+
+sum(is.na(mydata))
+mydata1<-mydata[1:486,]
+sum(is.na(mydata1))
+colSums(is.na(mydata1))
+
+#Corrplot
+num_data1<-na.omit(num_data)
+library(corrplot)
+cor_mat<-cor(num_data1)
+corrplot(cor(num_data1))
+write.csv(cor_mat,'correl_matrix.csv',row.names = FALSE)
