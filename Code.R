@@ -64,10 +64,9 @@ summary(catdata)
 plot(catdata$band.type)
 
 # pdf('mygraph1.pdf')
-# lapply(catdata[,names(catdata)],function(x) plot(x,xlab = names(catdata)))
+# lapply(catdata[,names(catdata)],function(x) plot(x,xlab = names(catdata[,i])))
 # dev.off()
 # plot(catdata[,2])
-
 
 # for(i in 1:20){
 #   dev.copy(jpeg,filename=paste(names(catdata[i]),"plot.jpg",sep="_"))
@@ -139,39 +138,62 @@ catdata <- catdata[1:486,]
 
 ###Comparison of plots before and after imputation
 ##Categorical Plots
-for(i in 1:19){
-  dev.copy(jpeg,filename=paste(names(catdata[i]),"verifyplot.jpg",sep="_"))
-  par(mfrow = c(1,3))
-  plot(mydata2[,i+20], xlab = names(mydata2[i+20]), ylab = 'Frequency_mydata2')
-  plot(catdata[,i], xlab = names(catdata[i]), ylab = 'Frequency')
-  plot(mydata1[,i+20], xlab = names(mydata1[i+20]), ylab = 'Frequency_mydata1')
-  dev.off ()
-}
+# for(i in 1:19){
+#   dev.copy(jpeg,filename=paste(names(catdata[i]),"verifyplot.jpg",sep="_"))
+#   par(mfrow = c(1,3))
+#   plot(mydata2[,i+20], xlab = names(mydata2[i+20]), ylab = 'Frequency_mydata2')
+#   plot(catdata[,i], xlab = names(catdata[i]), ylab = 'Frequency')
+#   plot(mydata1[,i+20], xlab = names(mydata1[i+20]), ylab = 'Frequency_mydata1')
+#   dev.off ()
+# }
 
 num_data<-num_data[1:486,]
 
 ###Histogram
-for(i in 1:20){
-  dev.copy(jpeg,filename=paste(names(num_data[i]),"verifyplot.jpg",sep="_"))
-  par(mfrow = c(1,3))
-  hist(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Frequency_mydata2')
-  hist(num_data[,i],xlab = names(num_data[i]), ylab = 'Frequency')
-  hist(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Frequency_mydata1')
-  dev.off ()
-}
+# for(i in 1:20){
+#   dev.copy(jpeg,filename=paste(names(num_data[i]),"verifyplot.jpg",sep="_"))
+#   par(mfrow = c(1,3))
+#   hist(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Frequency_mydata2')
+#   hist(num_data[,i],xlab = names(num_data[i]), ylab = 'Frequency')
+#   hist(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Frequency_mydata1')
+#   dev.off ()
+# }
 
 ##Box Plots for comparison before and after imputation
-for(i in 1:20){
-  dev.copy(jpeg,filename=paste(names(num_data[i]),"verifybwplot.jpg",sep="_"))
-  par(mfrow = c(1,3))
-  boxplot(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Freq_mydata2')
-  boxplot(num_data[,i], xlab = names(num_data[i]), ylab = 'Freq_numdata')
-  boxplot(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Freq_mydata1')
-  dev.off()
-}
+# for(i in 1:20){
+#   dev.copy(jpeg,filename=paste(names(num_data[i]),"verifybwplot.jpg",sep="_"))
+#   par(mfrow = c(1,3))
+#   boxplot(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Freq_mydata2')
+#   boxplot(num_data[,i], xlab = names(num_data[i]), ylab = 'Freq_numdata')
+#   boxplot(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Freq_mydata1')
+#   dev.off()
+# }
 
+####Normalize###
 library(vegan)
 mydata1[,2:20]<-decostand(mydata1[,2:20], method = 'range')
 summary(mydata1)
 
 names(mydata1)
+
+str(mydata1)
+
+##Using knn or central imputation for different variables
+sum(is.na(mydata))
+knn_df<-mydata[,c(1:7,9:17,19)]
+central_df<-mydata[,-c(1:7,9:17,19)]
+
+sum(is.na(knn_df))
+sum(is.na(central_df))
+
+knn_df<-knnImputation(knn_df)
+central_df<-centralImputation(central_df)
+
+finaldata<-cbind(knn_df,central_df)
+sum(is.na(finaldata))
+
+# for(i in 1:39){
+#   dev.copy(png,filename = paste(names(finaldata[i]),'relplot.png',sep = '_'))
+#   plot(x = finaldata[,i], y = finaldata$band.type, xlab = names(finaldata[i]), ylab = 'band.type')
+#   dev.off()
+# }
