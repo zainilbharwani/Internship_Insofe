@@ -197,3 +197,12 @@ sum(is.na(finaldata))
 #   plot(x = finaldata[,i], y = finaldata$band.type, xlab = names(finaldata[i]), ylab = 'band.type')
 #   dev.off()
 # }
+
+#Performing PCA
+pca_comp<-princomp(finaldata[,1:20],cor = TRUE)
+summary(pca_comp)
+
+pca_data<-data.frame(pca_comp$scores)
+pca_data<-cbind(pca_data,finaldata[,21:40])
+plot(pca_comp)
+
