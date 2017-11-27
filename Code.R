@@ -104,8 +104,8 @@ rows_with_more_NAs<-x[x>0.2]
 which(x>0.2)
 
 sum(is.na(mydata))
-mydata1<-mydata[1:486,]
-mydata2<-mydata[1:486,]
+mydata_knn<-mydata[1:486,]
+mydata_central<-mydata[1:486,]
 
 #Corrplot
 num_data1<-na.omit(num_data)
@@ -115,22 +115,22 @@ corrplot(cor(num_data1))
 #write.csv(cor_mat,'correl_matrix.csv',row.names = FALSE)
 
 #######Pre-Processing#######
-sum(is.na(mydata1))
-colSums(is.na(mydata1))
+sum(is.na(mydata_knn))
+colSums(is.na(mydata_knn))
 
 #Dropping columns with more than 20% NAs
-mydata1$paper.mill.location<-NULL
-mydata2$paper.mill.location<-NULL
-sum(is.na(mydata1))
-summary(mydata1)
+mydata_knn$paper.mill.location<-NULL
+mydata_central$paper.mill.location<-NULL
+sum(is.na(mydata_knn))
+summary(mydata_knn)
 
 library(DMwR)
-mydata1<-knnImputation(mydata1)
-sum(is.na(mydata1))
-str(mydata1)
+mydata_knn<-knnImputation(mydata_knn)
+sum(is.na(mydata_knn))
+str(mydata_central)
 
-mydata2<-centralImputation(mydata2)
-sum(is.na(mydata2))
+mydata_central<-centralImputation(mydata_central)
+sum(is.na(mydata_central))
 
 #Checking the distributions
 catdata$paper.mill.location<-NULL
@@ -141,9 +141,9 @@ catdata <- catdata[1:486,]
 # for(i in 1:19){
 #   dev.copy(jpeg,filename=paste(names(catdata[i]),"verifyplot.jpg",sep="_"))
 #   par(mfrow = c(1,3))
-#   plot(mydata2[,i+20], xlab = names(mydata2[i+20]), ylab = 'Frequency_mydata2')
+#   plot(mydata_central[,i+20], xlab = names(mydata_central[i+20]), ylab = 'Frequency_mydata_central')
 #   plot(catdata[,i], xlab = names(catdata[i]), ylab = 'Frequency')
-#   plot(mydata1[,i+20], xlab = names(mydata1[i+20]), ylab = 'Frequency_mydata1')
+#   plot(mydata_knn[,i+20], xlab = names(mydata_knn[i+20]), ylab = 'Frequency_mydata_knn')
 #   dev.off ()
 # }
 
@@ -153,9 +153,9 @@ num_data<-num_data[1:486,]
 # for(i in 1:20){
 #   dev.copy(jpeg,filename=paste(names(num_data[i]),"verifyplot.jpg",sep="_"))
 #   par(mfrow = c(1,3))
-#   hist(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Frequency_mydata2')
+#   hist(mydata_central[,i], xlab = names(mydata_central[i]), ylab = 'Frequency_mydata_central')
 #   hist(num_data[,i],xlab = names(num_data[i]), ylab = 'Frequency')
-#   hist(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Frequency_mydata1')
+#   hist(mydata_knn[,i], xlab = names(mydata_knn[i]), ylab = 'Frequency_mydata_knn')
 #   dev.off ()
 # }
 
@@ -163,20 +163,23 @@ num_data<-num_data[1:486,]
 # for(i in 1:20){
 #   dev.copy(jpeg,filename=paste(names(num_data[i]),"verifybwplot.jpg",sep="_"))
 #   par(mfrow = c(1,3))
-#   boxplot(mydata2[,i], xlab = names(mydata2[i]), ylab = 'Freq_mydata2')
+#   boxplot(mydata_central[,i], xlab = names(mydata_central[i]), ylab = 'Freq_mydata_central')
 #   boxplot(num_data[,i], xlab = names(num_data[i]), ylab = 'Freq_numdata')
-#   boxplot(mydata1[,i], xlab = names(mydata1[i]), ylab = 'Freq_mydata1')
+#   boxplot(mydata_knn[,i], xlab = names(mydata_knn[i]), ylab = 'Freq_mydata_knn')
 #   dev.off()
 # }
 
 ####Normalize###
 library(vegan)
-mydata1[,2:20]<-decostand(mydata1[,2:20], method = 'range')
-summary(mydata1)
+mydata_knn[,2:20]<-decostand(mydata_knn[,2:20], method = 'range')
+summary(mydata_knn)
 
-names(mydata1)
+mydata_central[,2:20]<-decostand(mydata_central[,2:20], method = 'range')
+summary(mydata_central)
 
-str(mydata1)
+names(mydata_knn)
+
+str(mydata_knn)
 
 ##Using knn or central imputation for different variables
 sum(is.na(mydata))
@@ -188,6 +191,10 @@ sum(is.na(central_df))
 
 knn_df<-knnImputation(knn_df)
 central_df<-centralImputation(central_df)
+
+#Normalizing both knn_df and central_df
+knn_df<-decostand(knn_df,method = 'range')
+central_df[,1:3]<-decostand(central_df[,1:3],method = 'range')
 
 finaldata<-cbind(knn_df,central_df)
 sum(is.na(finaldata))
@@ -206,3 +213,4 @@ pca_data<-data.frame(pca_comp$scores)
 pca_data<-cbind(pca_data,finaldata[,21:40])
 plot(pca_comp)
 
+save.image("C:/Users/hp/Desktop/Insofe Intern/code_workspace.RData")
