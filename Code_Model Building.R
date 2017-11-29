@@ -7,7 +7,6 @@ finaldata$job.number<-NULL
 finaldata$ink.color<-NULL
 finaldata$cylinder.division<-NULL
 finaldata$customer<-NULL
-str(finaldata)
 
 attach(finaldata)
 
@@ -45,6 +44,15 @@ library(MASS)
 model_stepaic<-stepAIC(model_glm)
 model_stepaic
 
+prob_stepaic_train<-predict(model_stepaic, newdata = traindata, type = 'response')
+prob_stepaic_val<-predict(model_stepaic, newdata = valdata, type = 'response')
+
+output_stepaic_train<-ifelse(prob_stepaic_train<0.45,'band','noband')
+output_stepaic_val<-ifelse(prob_stepaic_val<0.45,'band','noband')
+
+Accuracy(output_stepaic_train,traindata$band.type)
+Accuracy(output_stepaic_val,valdata$band.type)
+
 ##Decision Trees###
 library(rpart)
 library(rpart.plot)
@@ -57,7 +65,7 @@ rpart.plot(model_rpart, cex = 0.5)
 
 printcp(model_rpart)
 plotcp(model_rpart)
-prune_tree<-prune(model_rpart, cp=0.0078)
+prune_tree<-prune(model_rpart, cp=0.0478)
 
 #dev.copy(png, filename = paste('prunetree_plot.png'))
 rpart.plot(prune_tree, cex = 0.5)
@@ -79,12 +87,12 @@ Accuracy(output_prune_val,valdata$band.type)
 
 #C5.0 model
 library(C50)
-model_c50<-C5.0(x = traindata[,-34], y = traindata[,34], rules = F)
+model_c50<-C5.0(x = traindata[,-33], y = traindata[,33], rules = F)
 model_c50$rules
 model_c50$trials
 
-output_c50_train<-predict(model_c50, newdata = traindata[,-34])
-output_c50_val<-predict(model_c50, newdata = valdata[,-34])
+output_c50_train<-predict(model_c50, newdata = traindata[,-33])
+output_c50_val<-predict(model_c50, newdata = valdata[,-33])
 
 Accuracy(output_c50_train,traindata$band.type)
 Accuracy(output_c50_val,valdata$band.type)
@@ -113,7 +121,6 @@ output_svm_val<-predict(model_svm, newdata = valdata)
 
 Accuracy(output_svm_train, traindata$band.type)
 Accuracy(output_svm_val, valdata$band.type)
-confusionMatrix(output_svm_val, valdata$band.type)
 
 ##Confusion Matrix for all the models
 confusionMatrix(output_glm_train, traindata$band.type)
@@ -130,4 +137,4 @@ confusionMatrix(output_c50_val, valdata$band.type)
 confusionMatrix(output_knn_val, valdata$band.type)
 confusionMatrix(output_svm_val, valdata$band.type)
 
-##Random Forest 
+##Regularization
