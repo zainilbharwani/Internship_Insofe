@@ -25,7 +25,7 @@ str(traindata)
 str(valdata)
 str(testdata)
 
-#Logistic regression 
+##Logistic regression##
 library(glmnet)
 model_glm<-glm(band.type~., data = traindata, family = 'binomial')
 model_glm
@@ -40,12 +40,12 @@ library(MLmetrics)
 Accuracy(output_glm_train,traindata$band.type)
 Accuracy(output_glm_val,valdata$band.type)
 
-#StepAIC
+##StepAIC##
 library(MASS)
 model_stepaic<-stepAIC(model_glm)
 model_stepaic
 
-#Decision Trees
+##Decision Trees###
 library(rpart)
 library(rpart.plot)
 model_rpart<-rpart(band.type~., data = traindata, cp = -1)
@@ -77,9 +77,11 @@ output_prune_val<-predict(prune_tree, newdata = valdata, 'class')
 Accuracy(output_prune_train,traindata$band.type)
 Accuracy(output_prune_val,valdata$band.type)
 
+#C5.0 model
 library(C50)
 model_c50<-C5.0(x = traindata[,-34], y = traindata[,34], rules = F)
 model_c50$rules
+model_c50$trials
 
 output_c50_train<-predict(model_c50, newdata = traindata[,-34])
 output_c50_val<-predict(model_c50, newdata = valdata[,-34])
@@ -88,3 +90,44 @@ Accuracy(output_c50_train,traindata$band.type)
 Accuracy(output_c50_val,valdata$band.type)
 #plot(model_c50)
 
+##KNN##
+model_knn<-knn3(band.type~., data = traindata, k=10)
+model_knn
+
+prob_knn_train<-predict(model_knn, newdata = traindata)
+prob_knn_val<-predict(model_knn, newdata = valdata)
+
+output_knn_train<-ifelse(prob_knn_train[,1]>prob_knn_train[,2], 'band', 'noband')
+output_knn_val<-ifelse(prob_knn_val[,1]>prob_knn_val[,2], 'band', 'noband')
+
+Accuracy(output_knn_train,traindata$band.type)
+Accuracy(output_knn_val,valdata$band.type)
+
+##SVM##
+library(e1071)
+model_svm<-svm(band.type~., data = traindata, kernel = 'linear')
+model_svm
+
+output_svm_train<-predict(model_svm, newdata = traindata)
+output_svm_val<-predict(model_svm, newdata = valdata)
+
+Accuracy(output_svm_train, traindata$band.type)
+Accuracy(output_svm_val, valdata$band.type)
+confusionMatrix(output_svm_val, valdata$band.type)
+
+##Confusion Matrix for all the models
+confusionMatrix(output_glm_train, traindata$band.type)
+confusionMatrix(output_rpart_train, traindata$band.type)
+confusionMatrix(output_prune_train, traindata$band.type)
+confusionMatrix(output_c50_train, traindata$band.type)
+confusionMatrix(output_knn_train, traindata$band.type)
+confusionMatrix(output_svm_train, traindata$band.type)
+
+confusionMatrix(output_glm_val, valdata$band.type)
+confusionMatrix(output_rpart_val, valdata$band.type)
+confusionMatrix(output_prune_val, valdata$band.type)
+confusionMatrix(output_c50_val, valdata$band.type)
+confusionMatrix(output_knn_val, valdata$band.type)
+confusionMatrix(output_svm_val, valdata$band.type)
+
+##Random Forest 
