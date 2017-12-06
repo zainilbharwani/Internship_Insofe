@@ -41,8 +41,8 @@ Accuracy(output_glm_val,valdata$band.type)
 
 ##StepAIC##
 library(MASS)
-model_stepaic<-stepAIC(model_glm)
-model_stepaic
+# model_stepaic<-stepAIC(model_glm)
+# model_stepaic
 
 prob_stepaic_train<-predict(model_stepaic, newdata = traindata, type = 'response')
 prob_stepaic_val<-predict(model_stepaic, newdata = valdata, type = 'response')
@@ -87,12 +87,12 @@ Accuracy(output_prune_val,valdata$band.type)
 
 #C5.0 model
 library(C50)
-model_c50<-C5.0(x = traindata[,-33], y = traindata[,33], rules = F)
+model_c50<-C5.0(x = traindata[,-34], y = traindata[,34], rules = F)
 model_c50$rules
 model_c50$trials
 
-output_c50_train<-predict(model_c50, newdata = traindata[,-33])
-output_c50_val<-predict(model_c50, newdata = valdata[,-33])
+output_c50_train<-predict(model_c50, newdata = traindata[,-34])
+output_c50_val<-predict(model_c50, newdata = valdata[,-34])
 
 Accuracy(output_c50_train,traindata$band.type)
 Accuracy(output_c50_val,valdata$band.type)
@@ -138,3 +138,139 @@ confusionMatrix(output_knn_val, valdata$band.type)
 confusionMatrix(output_svm_val, valdata$band.type)
 
 ##Regularization
+library(glmnet)
+summary(traindata)
+fit_lasso<-glmnet(x = as.matrix(traindata[,1:19]), y = traindata[,34], alpha = 1, family = 'binomial')
+fit_lasso
+summary(fit_lasso)
+plot(fit_lasso, xvar = 'lambda')
+
+coef(fit_lasso)
+# predict(fit_lasso,as.matrix(traindata[,1:19]))
+# Accuracy(traindata$band.type, )
+
+####Ensemble Techniques####
+##Stacking of C50, KNN, SVM models
+stack_df_train<-data.frame(cbind('C50' = output_c50_train, 'KNN' = output_knn_train, 'SVM' = output_svm_train, 'Target' = traindata$band.type))
+
+stack_df_train$C50<-ifelse(stack_df_train$C50==1,'band','noband')
+stack_df_train$SVM<-ifelse(stack_df_train$SVM==1,'band','noband') 
+stack_df_train$Target<-ifelse(stack_df_train$Target==1, 'band', 'noband')
+
+stack_df_val<-data.frame(cbind('C50' = output_c50_val, 'KNN' = output_knn_val, 'SVM' = output_svm_val, 'Target' = valdata$band.type))
+
+stack_df_val$C50<-ifelse(stack_df_val$C50==1,'band','noband')
+stack_df_val$SVM<-ifelse(stack_df_val$SVM==1,'band','noband')
+stack_df_val$Target<-ifelse(stack_df_val$Target==1,'band','noband')
+
+#Using KNN as a classifier
+model_stack_knn<-knn3(Target~., data=stack_df_train)
+model_stack_knn
+
+prob_stack_knn_train<-predict(model_stack_knn, newdata = stack_df_train)
+output_stack_knn_train<-ifelse(prob_stack_knn_train[,1]>prob_stack_knn_train[,2], 'band', 'noband')
+
+prob_stack_knn_val<-predict(model_stack_knn, newdata = stack_df_val)
+output_stack_knn_val<-ifelse(prob_stack_knn_val[,1]>prob_stack_knn_val[,2], 'band', 'noband')
+
+Accuracy(output_stack_knn_train,stack_df_train$Target)
+Accuracy(output_stack_knn_val,stack_df_val$Target)
+
+Recall(output_stack_knn_train,stack_df_train$Target)
+Recall(output_stack_knn_val,stack_df_val$Target)
+
+Precision(output_stack_knn_val,stack_df_val$Target)
+
+##Stacking does not result in any significant improvement in the recall scores
+
+##Random Forest
+library(randomForest)
+set.seed(256)
+model_randomforest<-randomForest(band.type~., data = traindata, ntree = 200)
+model_randomforest
+
+plot(model_randomforest)
+
+output_randomforest_train<-predict(model_randomforest, newdata = traindata)
+output_randomforest_val<-predict(model_randomforest, newdata = valdata)
+
+Accuracy(output_randomforest_train, traindata$band.type)
+Accuracy(output_randomforest_val, valdata$band.type)
+
+Recall(output_randomforest_train, traindata$band.type)
+Recall(output_randomforest_val, valdata$band.type)
+
+Precision(output_randomforest_val, valdata$band.type)
+
+###Code for installing library reprtree
+# options(repos='http://cran.rstudio.org')
+# have.packages <- installed.packages()
+# cran.packages <- c('devtools','plotrix','randomForest','tree')
+# to.install <- setdiff(cran.packages, have.packages[,1])
+# if(length(to.install)>0) install.packages(to.install)
+# 
+# library(devtools)
+# if(!('reprtree' %in% installed.packages())){
+#   install_github('araastat/reprtree')
+# }
+# for(p in c(cran.packages, 'reprtree')) eval(substitute(library(pkg), list(pkg=p)))
+
+reprtree:::plot.getTree(model_randomforest, depth = 4)
+
+#Using cforest()
+library(party)
+
+acc_cforest_train = 1:100
+acc_cforest_val = 1:100
+recall_cforest_train = 1:100
+recall_cforest_val = 1:100
+#recall_cforest_test = 1:100
+
+for(ntree in 1:100){
+  set.seed(256)
+  model_cforest<-cforest(band.type~., data = traindata, controls=cforest_control(ntree=ntree))
+  model_cforest
+  
+  output_cforest_train<-predict(model_cforest, newdata = traindata)
+  output_cforest_val<-predict(model_cforest, newdata = valdata)
+  
+  acc_cforest_train[ntree]<-Accuracy(output_cforest_train, traindata$band.type)
+  acc_cforest_val[ntree]<-Accuracy(output_cforest_val, valdata$band.type)
+  
+  recall_cforest_train[ntree]<-Recall(output_cforest_train, traindata$band.type)
+  recall_cforest_val[ntree]<-Recall(output_cforest_val, valdata$band.type)
+  
+  # output_cforest_test<-predict(model_cforest, newdata = testdata)
+  # recall_cforest_test[ntree]<-Recall(output_cforest_test, testdata$band.type)
+}
+
+max(recall_cforest_train)
+max(recall_cforest_val)
+
+plot(recall_cforest_train, type = 's', main = 'Recall vs Number of trees for train using cforest', xlab = 'Number of trees', ylab = 'Recall_train_pcadata', col = 'blue')
+plot(recall_cforest_val, type = 's', main = 'Recall vs Number of trees for validation using cforest', xlab = 'Number of trees', ylab = 'Recall_val_pcadata', col = 'red')
+
+###Boosting
+library(mlbench)
+library(gbm)
+traindata$band.type<-ifelse(traindata$band.type == 'band', 0, 1)
+valdata$band.type<-ifelse(valdata$band.type=='band', 0, 1)
+model_boosting<-gbm(band.type~., data = traindata, n.trees = 15000)
+model_boosting
+
+prob_boosting_train<-predict.gbm(model_boosting, newdata = traindata, n.trees = 15000, type = 'response')
+prob_boosting_val<-predict.gbm(model_boosting, newdata = valdata, n.trees = 15000, type = 'response')
+
+output_boosting_train<-ifelse(prob_boosting_train<0.5, 0, 1)
+output_boosting_val<-ifelse(prob_boosting_val<0.5, 0, 1)
+
+Recall(output_boosting_train, traindata$band.type)
+Accuracy(output_boosting_train, traindata$band.type)
+
+Recall(output_boosting_val, valdata$band.type)
+Accuracy(output_boosting_val, valdata$band.type)
+
+# write.csv(finaldata, 'finaldata.csv', row.names = FALSE)
+# write.csv(mydata_knn, 'mydata_knn.csv', row.names = FALSE)
+# write.csv(mydata_central, 'mydata_central.csv', row.names = FALSE)
+# write.csv(pca_data, 'pca_data.csv', row.names = FALSE)
