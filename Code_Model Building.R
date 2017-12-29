@@ -8,6 +8,20 @@ finaldata$ink.color<-NULL
 finaldata$cylinder.division<-NULL
 finaldata$customer<-NULL
 
+mydata_knn$timestamp<-NULL
+mydata_knn$cylinder.number<-NULL
+mydata_knn$job.number<-NULL
+mydata_knn$ink.color<-NULL
+mydata_knn$cylinder.division<-NULL
+mydata_knn$customer<-NULL
+
+mydata_central$timestamp<-NULL
+mydata_central$cylinder.number<-NULL
+mydata_central$job.number<-NULL
+mydata_central$ink.color<-NULL
+mydata_central$cylinder.division<-NULL
+mydata_central$customer<-NULL
+
 attach(finaldata)
 
 ######Model Building######
@@ -41,8 +55,8 @@ Accuracy(output_glm_val,valdata$band.type)
 
 ##StepAIC##
 library(MASS)
-# model_stepaic<-stepAIC(model_glm)
-# model_stepaic
+model_stepaic<-stepAIC(model_glm)
+model_stepaic
 
 prob_stepaic_train<-predict(model_stepaic, newdata = traindata, type = 'response')
 prob_stepaic_val<-predict(model_stepaic, newdata = valdata, type = 'response')
@@ -52,6 +66,9 @@ output_stepaic_val<-ifelse(prob_stepaic_val<0.45,'band','noband')
 
 Accuracy(output_stepaic_train,traindata$band.type)
 Accuracy(output_stepaic_val,valdata$band.type)
+
+Recall(output_stepaic_train,traindata$band.type)
+Recall(output_stepaic_val,valdata$band.type)
 
 ##Decision Trees###
 library(rpart)
@@ -65,7 +82,7 @@ rpart.plot(model_rpart, cex = 0.5)
 
 printcp(model_rpart)
 plotcp(model_rpart)
-prune_tree<-prune(model_rpart, cp=0.0478)
+prune_tree<-prune(model_rpart, cp=0.0078)
 
 #dev.copy(png, filename = paste('prunetree_plot.png'))
 rpart.plot(prune_tree, cex = 0.5)
@@ -146,9 +163,9 @@ summary(fit_lasso)
 plot(fit_lasso, xvar = 'lambda')
 
 coef(fit_lasso)
+
 # predict(fit_lasso,as.matrix(traindata[,1:19]))
 # Accuracy(traindata$band.type, )
-
 ####Ensemble Techniques####
 ##Stacking of C50, KNN, SVM models
 stack_df_train<-data.frame(cbind('C50' = output_c50_train, 'KNN' = output_knn_train, 'SVM' = output_svm_train, 'Target' = traindata$band.type))
@@ -186,10 +203,18 @@ Precision(output_stack_knn_val,stack_df_val$Target)
 ##Random Forest
 library(randomForest)
 set.seed(256)
-model_randomforest<-randomForest(band.type~., data = traindata, ntree = 200)
+model_randomforest<-randomForest(band.type~., data = traindata, ntree = 500)
 model_randomforest
 
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1)) 
+par(mar=c(5,4,4,0)) #No margin on the right side
 plot(model_randomforest)
+par(mar=c(5,0,4,2)) #No margin on the left side
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("topright", colnames(model_randomforest$err.rate),col=1:3,cex=0.64,fill=1:3)
+model_randomforest$err.rate
+dev.off()
 
 output_randomforest_train<-predict(model_randomforest, newdata = traindata)
 output_randomforest_val<-predict(model_randomforest, newdata = valdata)
@@ -255,7 +280,7 @@ library(mlbench)
 library(gbm)
 traindata$band.type<-ifelse(traindata$band.type == 'band', 0, 1)
 valdata$band.type<-ifelse(valdata$band.type=='band', 0, 1)
-model_boosting<-gbm(band.type~., data = traindata, n.trees = 15000)
+model_boosting<-gbm(band.type~., data = traindata, n.trees = 15000, distribution = 'bernoulli')
 model_boosting
 
 prob_boosting_train<-predict.gbm(model_boosting, newdata = traindata, n.trees = 15000, type = 'response')
@@ -274,3 +299,5 @@ Accuracy(output_boosting_val, valdata$band.type)
 # write.csv(mydata_knn, 'mydata_knn.csv', row.names = FALSE)
 # write.csv(mydata_central, 'mydata_central.csv', row.names = FALSE)
 # write.csv(pca_data, 'pca_data.csv', row.names = FALSE)
+save.image("C:/Users/hp/Desktop/Insofe Intern/Model_building_workspace.RData")
+

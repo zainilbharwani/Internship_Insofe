@@ -1,12 +1,44 @@
 load('Model_building_workspace.RData')
 
-# finaldata<-finaldata[1:486,]
+mydata_missForest<-mydata
+
+str(mydata)
+
+mydata_missForest$timestamp<-NULL
+mydata_missForest$cylinder.number<-NULL
+mydata_missForest$job.number<-NULL
+mydata_missForest$ink.color<-NULL
+mydata_missForest$cylinder.division<-NULL
+mydata_missForest$customer<-NULL
+
+sum(is.na(mydata))
+library(missForest)
+missForest_impute<-missForest(mydata_missForest, maxiter = 5)
+
+sum(is.na(missForest_impute$ximp))
+mydata_missForest<-missForest_impute$ximp
+
+library(vegan)
+mydata_missForest[1:19]<-decostand(mydata_missForest[1:19], method = 'range')
+summary(mydata_missForest)
+#write.csv(mydata_missForest,'missforest_data.csv', row.names = F)
+
+num_data<-decostand(num_data, method = 'range', na.rm = TRUE)
+
+for(i in 1:19){
+  #dev.copy(png, filename = paste(names(mydata_missForest[i]),'486_BW_missforest_plot.png', sep = '_'))
+  par(mfrow=c(1,2))
+  boxplot(num_data[,i+1], xlab = names(num_data[i+1]), ylab = 'Freq_numdata')
+  boxplot(mydata_missForest[,i], xlab = names(mydata_missForest[i]), ylab = 'Freq_missforestdata')
+  #dev.off()
+}
+dev.off()
 
 library(caret)
 set.seed(25)
-trainrows<-createDataPartition(finaldata$band.type, p = 0.80, list = F)
-traindata<-finaldata[trainrows,]
-val_testdata<-finaldata[-trainrows,]
+trainrows<-createDataPartition(mydata_missForest$band.type, p = 0.80, list = F)
+traindata<-mydata_missForest[trainrows,]
+val_testdata<-mydata_missForest[-trainrows,]
 valrows<-createDataPartition(val_testdata$band.type, p = 0.5, list = F)
 valdata<-val_testdata[valrows,]
 testdata<-val_testdata[-valrows,]
@@ -15,30 +47,24 @@ str(traindata)
 str(valdata)
 str(testdata)
 
-var_mydata<-c()
-var_traindata<-c()
-var_valdata<-c()
-
-for(i in 1:19){
-  var_mydata<-append(var_mydata, var(finaldata[,i]))
-  var_traindata<-append(var_traindata, var(traindata[,i]))
-  var_valdata<-append(var_valdata, var(valdata[,i]))
-}
-
-summary(traindata)
-summary(valdata)
-
 library(MLmetrics)
 ####Hyper-Parameter Tuning####
 #Logistic
 model_glm<-glm(band.type~., data = traindata, family = 'binomial')
 model_glm
+summary(model_glm)
 
-prob_glm_train<-predict(model_glm, newdata = traindata, type = 'response')
-prob_glm_val<-predict(model_glm, newdata = valdata, type = 'response')
+prob_train<-predict(model_glm, newdata = traindata, type = 'response')
+prob_val<-predict(model_glm, newdata = valdata, type = 'response')
+
+output_glm_train<-ifelse(prob_train<0.65,'band','noband')
+output_glm_val<-ifelse(prob_val<0.65,'band','noband')
+
+confusionMatrix(output_glm_val, valdata$band.type)
+confusionMatrix(output_glm_train, traindata$band.type)
 
 library(ROCR)
-pred<-prediction(prob_glm_train, traindata$band.type)
+pred<-prediction(prob_train, traindata$band.type)
 pred
 
 perf <- performance(pred, measure="tpr", x.measure="fpr")
@@ -48,22 +74,6 @@ plot(perf, col=rainbow(10), colorize=T, print.cutoffs.at=seq(0,1,0.05))
 perf_auc <- performance(pred, measure="auc")
 auc <- perf_auc@y.values[[1]]
 print(auc)
-
-#0.55
-output_glm_train<-ifelse(prob_glm_train<0.55,'band','noband')
-output_glm_val<-ifelse(prob_glm_val<0.55,'band','noband')
-confusionMatrix(output_glm_val, valdata$band.type)
-confusionMatrix(output_glm_train, traindata$band.type)
-
-#0.6
-output_glm_train<-ifelse(prob_glm_train<0.6,'band','noband')
-output_glm_val<-ifelse(prob_glm_val<0.6,'band','noband')
-confusionMatrix(output_glm_val, valdata$band.type)
-
-#0.65
-output_glm_train<-ifelse(prob_glm_train<0.65,'band','noband')
-output_glm_val<-ifelse(prob_glm_val<0.65,'band','noband')
-confusionMatrix(output_glm_val, valdata$band.type)
 
 #Using Stepaic to determine useful features
 library(MASS)
@@ -80,15 +90,14 @@ output_stepaic_train<-ifelse(prob_stepaic_train<0.55,'band','noband')
 output_stepaic_val<-ifelse(prob_stepaic_val<0.55,'band','noband')
 confusionMatrix(output_stepaic_val, valdata$band.type)
 
-#0.6
-output_stepaic_train<-ifelse(prob_stepaic_train<0.6,'band','noband')
-output_stepaic_val<-ifelse(prob_stepaic_val<0.6,'band','noband')
-confusionMatrix(output_stepaic_val, valdata$band.type)
-confusionMatrix(output_stepaic_train, traindata$band.type)
-
 #0.5
 output_stepaic_train<-ifelse(prob_stepaic_train<0.5,'band','noband')
 output_stepaic_val<-ifelse(prob_stepaic_val<0.5,'band','noband')
+confusionMatrix(output_stepaic_val, valdata$band.type)
+
+#0.45
+output_stepaic_train<-ifelse(prob_stepaic_train<0.45,'band','noband')
+output_stepaic_val<-ifelse(prob_stepaic_val<0.45,'band','noband')
 confusionMatrix(output_stepaic_val, valdata$band.type)
 
 ##C50 model tuning
@@ -234,8 +243,8 @@ max(recall_cforest_train)
 max(recall_cforest_val)
 
 #par(mfrow = c(2,1))
-plot(recall_cforest_train, type = 's', main = 'Recall vs Number of trees for train using cforest', xlab = 'Number of trees', ylab = 'Recall_train_finaldata_tuned', col = 'blue')
-plot(recall_cforest_val, type = 's', main = 'Recall vs Number of trees for validation using cforest', xlab = 'Number of trees', ylab = 'Recall_val_finaldata_tuned', col = 'red')
+plot(recall_cforest_train, type = 's', main = 'Recall vs Number of trees for train using cforest', xlab = 'Number of trees', ylab = 'Recall_train_mydata_missForest_tuned', col = 'blue')
+plot(recall_cforest_val, type = 's', main = 'Recall vs Number of trees for validation using cforest', xlab = 'Number of trees', ylab = 'Recall_val_mydata_missForest_tuned', col = 'red')
 
 #Checking the variable importance in RF
 model_randomforest$importance
@@ -251,9 +260,9 @@ a = seq(1,39,by=2)
 for(i in a){
   
   model_knn<-knn3(band.type ~ viscosity + ink.temperature + humifity + 
-                  roughness + varnish.pct + press.speed + ESA.Voltage + wax + 
-                  blade.pressure + current.density + paper.type + ink.type + 
-                  type.on.cylinder + press.type + press + unit.number + paper.mill.location, 
+                  roughness + blade.pressure + press.speed + ink.pct + solvent.pct + 
+                  ESA.Voltage + ESA.Amperage + wax + current.density + grain.screened + 
+                  paper.type + type.on.cylinder + press.type + press + unit.number,      
                   data = traindata, k=i)
   model_knn
   
@@ -299,9 +308,9 @@ confusionMatrix(output_svm_val, valdata$band.type)
 library(rpart)
 library(rpart.plot)
 model_rpart<-rpart(band.type ~ viscosity + ink.temperature + humifity + 
-                   roughness + varnish.pct + press.speed + ESA.Voltage + wax + 
-                   blade.pressure + current.density + paper.type + ink.type + 
-                   type.on.cylinder + press.type + press + unit.number + paper.mill.location, 
+                   roughness + blade.pressure + press.speed + ink.pct + solvent.pct + 
+                   ESA.Voltage + ESA.Amperage + wax + current.density + grain.screened + 
+                   paper.type + type.on.cylinder + press.type + press + unit.number,
                    data = traindata, cp = -1)
 model_rpart
 
@@ -316,23 +325,24 @@ output_rpart_val<-predict(model_rpart, newdata = valdata, 'class')
 confusionMatrix(output_rpart_val, valdata$band.type)
 confusionMatrix(output_rpart_train, traindata$band.type)
 
-#Pruned tree
-prune_tree<-prune(model_rpart, cp = 0.010989)
-
-output_prune_train<-predict(prune_tree, newdata = traindata, 'class')
-output_prune_val<-predict(prune_tree, newdata = valdata, 'class')
-
-confusionMatrix(output_prune_val, valdata$band.type)
+# #Pruned tree
+# prune_tree<-prune(model_rpart, cp = 0.0054945)
+# 
+# output_prune_train<-predict(prune_tree, newdata = traindata, 'class')
+# output_prune_val<-predict(prune_tree, newdata = valdata, 'class')
+# 
+# confusionMatrix(output_prune_val, valdata$band.type)
 
 ###Ensembles
 #RF
 library(randomForest)
-set.seed(25)
+set.seed(256)
 model_randomforest<-randomForest(band.type ~ viscosity + ink.temperature + humifity + 
                                  roughness + varnish.pct + press.speed + ESA.Voltage + wax + 
                                  blade.pressure + current.density + paper.type + ink.type + 
                                  type.on.cylinder + press.type + press + unit.number + paper.mill.location,
-                                 data = traindata, ntree = 150)
+                                 data = traindata, ntree = 250)
+
 model_randomforest
 plot(model_randomforest)
 
@@ -340,23 +350,20 @@ output_randomforest_train<-predict(model_randomforest, newdata = traindata)
 output_randomforest_val<-predict(model_randomforest, newdata = valdata)
 
 confusionMatrix(output_randomforest_val, valdata$band.type)
-confusionMatrix(output_randomforest_train, traindata$band.type)
 
 #Cforest
 set.seed(256)
-library(party)
 model_cforest<-cforest(band.type ~ viscosity + ink.temperature + humifity + 
                        roughness + varnish.pct + press.speed + ESA.Voltage + wax + 
                        blade.pressure + current.density + paper.type + ink.type + 
                        type.on.cylinder + press.type + press + unit.number + paper.mill.location,
-                       data = traindata, controls=cforest_control(ntree=100))
+                       data = traindata, controls=cforest_control(ntree=200))
 model_cforest
 
 output_cforest_train<-predict(model_cforest, newdata = traindata)
 output_cforest_val<-predict(model_cforest, newdata = valdata)
 
 confusionMatrix(output_cforest_val, valdata$band.type)
-confusionMatrix(output_cforest_train, traindata$band.type)
 
 #GBM
 library(gbm)
@@ -372,20 +379,20 @@ model_boosting<-gbm(band.type ~ viscosity + ink.temperature + humifity +
                     roughness + varnish.pct + press.speed + ESA.Voltage + wax + 
                     blade.pressure + current.density + paper.type + ink.type + 
                     type.on.cylinder + press.type + press + unit.number + paper.mill.location,
-                    data = traindata1, n.trees = 5000, distribution = 'bernoulli')
+                    data = traindata1, n.trees = 15000, distribution = 'bernoulli')
 model_boosting
 
-prob_boosting_train<-predict.gbm(model_boosting, newdata = traindata1, n.trees = 5000, type = 'response')
-prob_boosting_val<-predict.gbm(model_boosting, newdata = valdata1, n.trees = 5000, type = 'response')
+prob_boosting_train<-predict.gbm(model_boosting, newdata = traindata1, n.trees = 15000, type = 'response')
+prob_boosting_val<-predict.gbm(model_boosting, newdata = valdata1, n.trees = 15000, type = 'response')
 
-output_boosting_train<-ifelse(prob_boosting_train<0.6, 0, 1)
-output_boosting_val<-ifelse(prob_boosting_val<0.6, 0, 1)
+output_boosting_train<-ifelse(prob_boosting_train<0.55, 0, 1)
+output_boosting_val<-ifelse(prob_boosting_val<0.55, 0, 1)
 
 confusionMatrix(output_boosting_val, valdata1$band.type)
 confusionMatrix(output_boosting_train, traindata1$band.type)
 
 #Xgboost
-colnames(traindata[,1:19])
+colnames(traindata1[,1:19])
 library(dummies)
 boost_traindata<-cbind(traindata1[,1:19],dummy.data.frame(traindata1[,20:33]),band.type = traindata1[,34])
 boost_valdata<-cbind(valdata1[,1:19],dummy.data.frame(valdata1[,20:33]),band.type = valdata1[,34])
@@ -397,12 +404,11 @@ model_xgboost
 prob_xgboost_train<-predict(model_xgboost, newdata = data.matrix(boost_traindata[,-68]))
 prob_xgboost_val<-predict(model_xgboost, newdata = data.matrix(boost_valdata[,-59]))
 
-output_xgboost_train<-ifelse(prob_xgboost_train<0.5, '0', '1')
-output_xgboost_val<-ifelse(prob_xgboost_val<0.5, '0', '1')
+output_xgboost_train<-ifelse(prob_xgboost_train<0.55, '0', '1')
+output_xgboost_val<-ifelse(prob_xgboost_val<0.55, '0', '1')
 
 confusionMatrix(output_xgboost_train, traindata1$band.type)
 confusionMatrix(output_xgboost_val, valdata1$band.type)
-
 
 ###Predictions on test data####
 prob_glm_test<-predict(model_glm, newdata = testdata, type = 'response')
@@ -436,3 +442,4 @@ prob_boosting_test<-predict(model_boosting, newdata = testdata1, n.trees = 5000,
 output_boosting_test<-ifelse(prob_boosting_test<0.6, 0, 1)
 confusionMatrix(output_boosting_test, testdata1$band.type)
 
+#save.image("C:/Users/hp/Desktop/Insofe Intern/Missforest_tuning_workspace.RData")

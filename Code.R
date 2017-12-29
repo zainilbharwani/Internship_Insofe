@@ -104,8 +104,8 @@ rows_with_more_NAs<-x[x>0.2]
 which(x>0.2)
 
 sum(is.na(mydata))
-mydata_knn<-mydata[1:486,]
-mydata_central<-mydata[1:486,]
+mydata_knn<-mydata[1:539,]
+mydata_central<-mydata[1:539,]
 
 #Corrplot
 num_data1<-na.omit(num_data)
@@ -118,9 +118,8 @@ corrplot(cor(num_data1))
 sum(is.na(mydata_knn))
 colSums(is.na(mydata_knn))
 
-#Dropping columns with more than 20% NAs
-mydata_knn$paper.mill.location<-NULL
-mydata_central$paper.mill.location<-NULL
+# mydata_knn$paper.mill.location<-NULL
+# mydata_central$paper.mill.location<-NULL
 sum(is.na(mydata_knn))
 summary(mydata_knn)
 
@@ -133,8 +132,8 @@ mydata_central<-centralImputation(mydata_central)
 sum(is.na(mydata_central))
 
 #Checking the distributions
-catdata$paper.mill.location<-NULL
-catdata <- catdata[1:486,]
+#catdata$paper.mill.location<-NULL
+#catdata <- catdata[1:539,]
 
 ###Comparison of plots before and after imputation
 ##Categorical Plots
@@ -147,7 +146,7 @@ catdata <- catdata[1:486,]
 #   dev.off ()
 # }
 
-num_data<-num_data[1:486,]
+#num_data<-num_data[1:539,]
 
 ###Histogram
 # for(i in 1:20){
@@ -206,7 +205,7 @@ sum(is.na(finaldata))
 # }
 
 #Performing PCA
-pca_comp<-princomp(finaldata[,1:20],cor = TRUE)
+pca_comp<-princomp(finaldata[,2:20],cor = TRUE)
 summary(pca_comp)
 
 pca_data<-data.frame(pca_comp$scores)
